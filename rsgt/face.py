@@ -3,7 +3,7 @@ import cv2
 import dlib
 from pathlib import Path
 from rsgt.util import get_euler_angles
-from pykalman import KalmanFilter
+# from pykalman import KalmanFilter
 
 facedetection_engines = ['dlib_hog']
 
@@ -11,6 +11,8 @@ module_dir = Path(__file__).parent
 
 dlib_face_detector = dlib.get_frontal_face_detector()
 dlib_face_predictor = dlib.shape_predictor(str(module_dir/'resources'/'shape_predictor_68_face_landmarks.dat'))
+
+"""
 try:
     import cv2.face
     cv2_face_detector = cv2.dnn.readNetFromCaffe(str(module_dir/'resources'/'deploy.prototxt.txt'),
@@ -19,6 +21,7 @@ try:
 except:
     #print('OpenCV DNN face detector is not available.')
     pass
+"""
 
 transition_matrix = [[ 1,1,0,0 ],
                      [ 0,1,0,0 ],
@@ -64,8 +67,9 @@ def get_face_boxes(frame, engine='dlib_hog'):
     if engine == 'dlib_hog':
         detections, scores, _ = dlib_face_detector.run(frame, 0) # detections, scores, weight_indices
         return detections, scores
-
-    else: # engine == 'cv2_dnn'
+    
+    """
+    elif engine == 'cv2_dnn'
         blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)), 1.0, (300, 300) )#, (104.0, 177.0, 123.0))
         (h, w) = frame.shape[:2]
         cv2_face_detector.setInput(blob)
@@ -81,6 +85,9 @@ def get_face_boxes(frame, engine='dlib_hog'):
             scores.append(confidence)
         
         return detections, scores
+    """
+
+
 
 def get_face_landmarks(frame, detection):
     shape = dlib_face_predictor(frame, detection)
@@ -233,6 +240,7 @@ class facedata(object):
         return np.linalg.norm(self.left_eye_center - self.right_eye_center)
 
 
+"""
 class face_filter(object):
     def __init__(self, measurements):
         self.filter = KalmanFilter(
@@ -243,3 +251,4 @@ class face_filter(object):
 
     def update(self, observation):
         pass
+"""
