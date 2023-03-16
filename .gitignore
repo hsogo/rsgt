@@ -17,3 +17,6 @@ tmp/
 #Windows
 Thumbs.db
 
+#Scripts
+set_env.bat
+set_env_full.bat
