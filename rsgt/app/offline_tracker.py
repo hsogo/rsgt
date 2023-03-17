@@ -239,7 +239,6 @@ class Offline_Tracker(wx.Frame):
         if self.batch_mode:
             self.start_offline_recording(None)
 
-
     def load_movie(self, event):
         if isinstance(event, str):
             filename = event
@@ -247,7 +246,7 @@ class Offline_Tracker(wx.Frame):
             filename = dlgAskopenfilename(self)
             if filename == '':
                 return
-
+            
         self.cap = cv2.VideoCapture(filename)
         if self.cap.isOpened():
             self.movie_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -260,10 +259,12 @@ class Offline_Tracker(wx.Frame):
             if img_width != self.config.camera_resolution_h or img_height != self.config.camera_resolution_v:
                 dlgShowerror(self, 'Error', 'Movie resolution ({:.0f},{:.0f}) and camera parameter ({:.0f},{:.0f}) do not match.'.format(
                     img_width, img_height, self.config.camera_resolution_h, self.config.camera_resolution_v))
+                self.cap.release()
                 return
 
             cameraview_size = (max(int(img_width*self.downscaling_factor), eye_image_height), 
                                     int(img_width*self.downscaling_factor)+eye_image_width*2)
+            print(cameraview_size)
             if cameraview_size != self.cameraview_size:
                 self.cameraview_size = cameraview_size
                 self.mediapanel.SetSize(self.cameraview_size)
@@ -480,6 +481,8 @@ class Offline_Tracker(wx.Frame):
     def camera_view_motion(self,event):
         if self.run_offline_recording:
             return
+        if self.orig_img is None:
+            return
         
         if self.updating_aoi:
             im = self.orig_img.copy()
@@ -495,6 +498,8 @@ class Offline_Tracker(wx.Frame):
             self.camera_view.SetBitmap(bmp)
 
     def aoi_update(self):
+        if self.orig_img is None:
+            return
         im = self.orig_img.copy()
         if self.area_of_interest is not None:
             cv2.rectangle(im, (self.area_of_interest.left(),self.area_of_interest.top()),
