@@ -601,7 +601,7 @@ class Offline_Tracker(wx.Frame):
                         target_idx = 0
                 else:
                     for target_idx in range(len(dets)):
-                        if self.area_of_interest.contains(dets[target_idx].center()):
+                        if self.area_of_interest.contains(dets[target_idx]):
                             detect_face = True
                             break
 

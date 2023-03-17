@@ -138,7 +138,7 @@ class calibrationDialog(wx.Dialog):
                         target_idx = 0
                 else:
                     for target_idx in range(len(dets)):
-                        if self.parent.area_of_interest.contains(dets[target_idx].center()):
+                        if self.parent.area_of_interest.contains(dets[target_idx]):
                             detect_face = True
                             break
                 
@@ -913,7 +913,7 @@ class offline_calibration_app(wx.Frame):
                                             int(dets[i].right()*inv), int(dets[i].bottom()*inv))
 
             for fidx in range(len(dets)):
-                if self.area_of_interest is None or self.area_of_interest.contains(dets[fidx].center()):
+                if self.area_of_interest is None or self.area_of_interest.contains(dets[fidx]):
                     cv2.rectangle(im, (dets[fidx].left(),dets[fidx].top()), (dets[fidx].right(),dets[fidx].bottom()),(0,255,0),thickness=3)
                 else:
                     cv2.rectangle(im, (dets[fidx].left(),dets[fidx].top()), (dets[fidx].right(),dets[fidx].bottom()),(0,0,255),thickness=3)
