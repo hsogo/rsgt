@@ -140,22 +140,20 @@ class Offline_Tracker(wx.Frame):
         super(wx.Frame, self).__init__(None, wx.ID_ANY, style=style)
 
         self.mediapanel = wx.Panel(self, wx.ID_ANY, size=(self.cameraview_size[1],self.cameraview_size[0]))
-        self.camera_view = CameraView(self.mediapanel, wx.ID_ANY, wx.Bitmap(self.cameraview_size[1],self.cameraview_size[0]))
-        mediasizer = wx.BoxSizer()
-        mediasizer.Add(self.camera_view)
-        self.mediapanel.SetSizer(mediasizer)
+        self.camera_view = self.init_cameraview(self.mediapanel)
         self.status_text = wx.StaticText(self, wx.ID_ANY, '-/- frames')
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(self.mediapanel, 4, wx.EXPAND)
         mainsizer.Add(self.status_text, 0, wx.EXPAND|wx.ALL, border=5)
-        self.SetSizerAndFit(mainsizer)
+        self.SetSizer(mainsizer)
+        self.SetSize(self.BestSize)
         self.Bind(Offline_Tracker.EVT_NEWIMAGE, self.new_image)
 
-        self.camera_view.Bind(wx.EVT_LEFT_DOWN, self.camera_view_leftdown)
-        self.camera_view.Bind(wx.EVT_LEFT_UP, self.camera_view_leftup)
-        self.camera_view.Bind(wx.EVT_LEAVE_WINDOW, self.camera_view_leave)
-        self.camera_view.Bind(wx.EVT_LEFT_DCLICK, self.camera_view_leftdclick)
-        self.camera_view.Bind(wx.EVT_MOTION, self.camera_view_motion)
+        #self.camera_view.Bind(wx.EVT_LEFT_DOWN, self.camera_view_leftdown)
+        #self.camera_view.Bind(wx.EVT_LEFT_UP, self.camera_view_leftup)
+        #self.camera_view.Bind(wx.EVT_LEAVE_WINDOW, self.camera_view_leave)
+        #self.camera_view.Bind(wx.EVT_LEFT_DCLICK, self.camera_view_leftdclick)
+        #self.camera_view.Bind(wx.EVT_MOTION, self.camera_view_motion)
 
         self.menu_bar = wx.MenuBar()
         self.menu_file = wx.Menu()
@@ -239,6 +237,23 @@ class Offline_Tracker(wx.Frame):
         if self.batch_mode:
             self.start_offline_recording(None)
 
+    def init_cameraview(self, panel):
+        camera_view = CameraView(panel, wx.ID_ANY, wx.Bitmap(self.cameraview_size[1],self.cameraview_size[0]))
+        camera_view.Bind(wx.EVT_LEFT_DOWN, self.camera_view_leftdown)
+        camera_view.Bind(wx.EVT_LEFT_UP, self.camera_view_leftup)
+        camera_view.Bind(wx.EVT_LEAVE_WINDOW, self.camera_view_leave)
+        camera_view.Bind(wx.EVT_LEFT_DCLICK, self.camera_view_leftdclick)
+        camera_view.Bind(wx.EVT_MOTION, self.camera_view_motion)
+        return camera_view
+    
+    def remove_cameraview(self, camera_view):
+        camera_view.Unbind(wx.EVT_LEFT_DOWN)
+        camera_view.Unbind(wx.EVT_LEFT_UP)
+        camera_view.Unbind(wx.EVT_LEAVE_WINDOW)
+        camera_view.Unbind(wx.EVT_LEFT_DCLICK)
+        camera_view.Unbind(wx.EVT_MOTION)
+        camera_view.Destroy()
+
     def load_movie(self, event):
         if isinstance(event, str):
             filename = event
@@ -261,17 +276,7 @@ class Offline_Tracker(wx.Frame):
                     img_width, img_height, self.config.camera_resolution_h, self.config.camera_resolution_v))
                 self.cap.release()
                 return
-
-            cameraview_size = (max(int(img_width*self.downscaling_factor), eye_image_height), 
-                                    int(img_width*self.downscaling_factor)+eye_image_width*2)
-            print(cameraview_size)
-            if cameraview_size != self.cameraview_size:
-                self.cameraview_size = cameraview_size
-                self.mediapanel.SetSize(self.cameraview_size)
-                self.camera_view.SetSize(self.cameraview_size)
-                self.mediapanel.Fit()
-                self.Fit()
-
+            
             #read and show the first frame
             ret, im = self.cap.read()
             if ret:
@@ -299,7 +304,7 @@ class Offline_Tracker(wx.Frame):
         filename = dlgAskopenfilename(self, filetypes='Camera config (*.cfg)|*.cfg')
         if filename == '':
             return
-
+        
         tmpconfig = configuration()
         try:
             tmpconfig.load_camera_param(filename)
@@ -326,7 +331,20 @@ class Offline_Tracker(wx.Frame):
             self.config.screen_width/conf.screen_h_res, 
             self.config.screen_rot,
             self.config.screen_offset)
-        
+
+        self.cameraview_size = (max(int(self.config.camera_resolution_v*self.downscaling_factor), eye_image_height), 
+                                int(self.config.camera_resolution_h*self.downscaling_factor)+eye_image_width*2)
+        sizer = self.GetSizer()
+        sizer.Remove(0)
+        self.remove_cameraview(self.camera_view)
+        self.mediapanel.Destroy()
+        self.mediapanel = wx.Panel(self, wx.ID_ANY, size=(self.cameraview_size[1],self.cameraview_size[0]))
+        self.camera_view = self.init_cameraview(self.mediapanel)
+        sizer.Prepend(self.mediapanel, 4, wx.EXPAND)
+        self.Layout()
+        self.SetSize(self.GetBestSize())
+
+
         dlgShowinfo(self, 'Info', 'Camera parameters are updated.')
 
     def open_face_model(self,event):
