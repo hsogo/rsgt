@@ -665,14 +665,24 @@ class offline_calibration_app(wx.Frame):
             dlgShowerror(self, 'Error', 'Cannot open {} as a camera parameter file'.format(filename))
             return
         
+        update_cameraview = False
         if self.cap is not None and self.cap.isOpened():
             w = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
             h = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
             if w != tmpconfig.camera_resolution_h or h != tmpconfig.camera_resolution_v:
-                dlgShowinfo(self, 'Warning',
-                    'Resolution defined in this cameara parameter file ({:.0f},{:.0f}) does not match with that of the current movie ({:.0f},{:.0f})'.format(
-                        tmpconfig.camera_resolution_h, tmpconfig.camera_resolution_v, w, h))
-
+                if dlgAskyesno(self, 'Info',
+                    'Resolution defined in this cameara parameter file ({:.0f},{:.0f}) does not match with that of the current movie ({:.0f},{:.0f})\n Do you want to close movie?'.format(
+                        tmpconfig.camera_resolution_h, tmpconfig.camera_resolution_v, w, h)):
+                    self.cap.release()
+                    self.cap = None
+                    self.orig_img = None
+                    self.buttonpanel.Enable(False)
+                    self.slider.Enable(False)
+                    update_cameraview = True
+                else:
+                    dlgShowinfo(self,'Info','Camera configuration was not updated.')
+                    return
+ 
         self.config.load_camera_param(filename)
 
         self.camera_matrix = self.config.camera_matrix
@@ -683,6 +693,12 @@ class offline_calibration_app(wx.Frame):
             self.config.screen_width/conf.screen_h_res, 
             self.config.screen_rot,
             self.config.screen_offset)
+
+        if update_cameraview:
+            im = np.zeros((self.camera_view_height, self.camera_view_width,3),dtype=np.uint8)
+            bmp = wx.Bitmap.FromBuffer(im.shape[1], im.shape[0], im)
+            self.camera_view.SetBitmap(bmp)
+
 
     def open_face_config(self,event):
         filename = dlgAskopenfilename(self, filetypes='Face model (*.cfg)|*.cfg')

@@ -19,7 +19,7 @@ from ..data import gazedata
 from ..eye import eye_filter, eyedata
 from ..face import facedata, get_face_boxes, get_face_landmarks
 from ..screen import screen
-from ..util import (dlgAskopenfilename,
+from ..util import (dlgAskopenfilename, dlgAskyesno,
                     dlgAsksaveasfilename, dlgShowerror, dlgShowinfo)
 from ..iris_detectors import get_iris_detector
 
@@ -264,10 +264,6 @@ class Offline_Tracker(wx.Frame):
             
         self.cap = cv2.VideoCapture(filename)
         if self.cap.isOpened():
-            self.movie_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            self.movie_fps = self.cap.get(cv2.CAP_PROP_FPS)
-            self.status_text.SetLabel('-/{} frames'.format(self.movie_frames))
-
             img_width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
             img_height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
@@ -277,6 +273,10 @@ class Offline_Tracker(wx.Frame):
                 self.cap.release()
                 return
             
+            self.movie_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            self.movie_fps = self.cap.get(cv2.CAP_PROP_FPS)
+            self.status_text.SetLabel('-/{} frames'.format(self.movie_frames))
+
             #read and show the first frame
             ret, im = self.cap.read()
             if ret:
@@ -317,9 +317,14 @@ class Offline_Tracker(wx.Frame):
             h = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
             if w != tmpconfig.camera_resolution_h or h != tmpconfig.camera_resolution_v:
                 # this function is not called in batch mode.
-                dlgShowinfo(self, 'Warning',
-                    'Resolution defined in this cameara parameter file ({:.0f},{:.0f}) does not match with that of the current movie ({:.0f},{:.0f})'.format(
-                        tmpconfig.camera_resolution_h, tmpconfig.camera_resolution_v, w, h))
+                if dlgAskyesno(self, 'Info',
+                    'Resolution defined in this cameara parameter file ({:.0f},{:.0f}) does not match with that of the current movie ({:.0f},{:.0f})\n Do you want to close movie?'.format(
+                        tmpconfig.camera_resolution_h, tmpconfig.camera_resolution_v, w, h)):
+                    self.cap.release()
+                    self.cap = None
+                else:
+                    dlgShowinfo(self,'Info','Camera configuration was not updated.')
+                    return
 
         self.config.load_camera_param(filename)
 
