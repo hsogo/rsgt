@@ -32,6 +32,7 @@ ID_LOAD_FACEMODEL = wx.NewIdRef()
 ID_OPEN_DATAFILE = wx.NewIdRef()
 ID_CLOSE_DATAFILE = wx.NewIdRef()
 ID_RUN_REC = wx.NewIdRef()
+ID_ABORT_REC = wx.NewIdRef()
 
 ID_DFMODE_NEW = wx.NewIdRef()
 ID_DFMODE_OVERWRITE = wx.NewIdRef()
@@ -83,13 +84,10 @@ class Offline_Tracker(wx.Frame):
     debug = True
     NewImageEvent, EVT_NEWIMAGE = wx.lib.newevent.NewEvent()
  
-    def __init__(self, config=None, batch=False, movie=None, cal=None, output=None, iris_detector=None, overwrite=False):
+    def __init__(self, config=None, batch=False, movie=None, cal=None, output=None, iris_detector=None, overwrite=False, force_calibrationless=False):
         self.config = config
         self.batch_mode = batch
         self.overwrite = overwrite
-        if overwrite and batch:
-            # force overwrite
-            self.config.datafile_open_mode = 'overwrite'
 
         self.cap = None
         self.movie_frames = None
@@ -175,7 +173,10 @@ class Offline_Tracker(wx.Frame):
 
         self.menu_bar.Append(self.menu_rec, 'Run')
         self.menu_rec.Append(ID_RUN_REC, 'Run offline recording')
+        self.menu_rec.Append(ID_ABORT_REC, 'Abort recording')
         self.Bind(wx.EVT_MENU, self.start_offline_recording, id=ID_RUN_REC)
+        self.Bind(wx.EVT_MENU, self.abort_offline_recording, id=ID_ABORT_REC)
+        self.menu_bar.Enable(ID_ABORT_REC,False) # disable Abort menu
 
         self.menu_option = wx.Menu()
         self.menu_bar.Append(self.menu_option, 'Option')
@@ -190,20 +191,20 @@ class Offline_Tracker(wx.Frame):
         self.menu_output_mode.AppendRadioItem(ID_OUTPUTMODE_NOCAL, 'Calibrationless')
         self.menu_output_mode.AppendRadioItem(ID_OUTPUTMODE_BOTH, 'Both')
         # datafile open mode
-        if config.datafile_open_mode == 'new':
+        if self.config.datafile_open_mode == 'new':
             self.menu_datafile_open_mode.Check(ID_DFMODE_NEW, True)
-        elif config.datafile_open_mode == 'overwrite':
+        elif self.config.datafile_open_mode == 'overwrite':
             self.menu_datafile_open_mode.Check(ID_DFMODE_OVERWRITE, True)
-        elif config.datafile_open_mode == 'rename':
+        elif self.config.datafile_open_mode == 'rename':
             self.menu_datafile_open_mode.Check(ID_DFMODE_RENAME, True)
         else:
-            raise ValueError('Invalid datafile open mode:{}'.format(config.datafile_open_mode))
+            raise ValueError('Invalid datafile open mode:{}'.format(self.config.datafile_open_mode))
         # output mode
-        if config.calibrated_output and config.calibrationless_output:
+        if self.config.calibrated_output and config.calibrationless_output:
             self.menu_output_mode.Check(ID_OUTPUTMODE_BOTH, True)
-        elif config.calibrated_output:
+        elif self.config.calibrated_output:
             self.menu_output_mode.Check(ID_OUTPUTMODE_CAL, True)
-        elif config.calibrationless_output:
+        elif self.config.calibrationless_output:
             self.menu_output_mode.Check(ID_OUTPUTMODE_NOCAL, True)
         else:
             raise ValueError('Invalid datafile open mode')
@@ -214,8 +215,23 @@ class Offline_Tracker(wx.Frame):
 
         self.SetMenuBar(self.menu_bar)
 
-        if (not self.batch_mode) and self.overwrite:
-            dlgShowinfo(self, 'Info', '--overwrite option is effective only in batch mode.')
+        notice_option_msg = []
+        if overwrite:
+            if batch:
+                # force overwrite
+                self.config.datafile_open_mode = 'overwrite'
+            else:
+                notice_option_msg.append('    --overwrite')
+        if force_calibrationless:
+            if batch:
+                # force calibrationless output
+                self.config.calibrated_output = False
+                self.config.calibrationless_output = True
+            else:
+                notice_option_msg.append('    --force_calibrationless')
+
+        if len(notice_option_msg)>0:
+            dlgShowinfo(self, 'Info', 'Following option(s) are effective only in batch mode.\n{}'.format('\n'.join(notice_option_msg)))
 
         if cal is not None:
             self.open_calibration(cal)
@@ -349,7 +365,6 @@ class Offline_Tracker(wx.Frame):
         self.Layout()
         self.SetSize(self.GetBestSize())
 
-
         dlgShowinfo(self, 'Info', 'Camera parameters are updated.')
 
     def open_face_model(self,event):
@@ -419,7 +434,7 @@ class Offline_Tracker(wx.Frame):
             if not self.batch_mode:
                 dlgShowerror(self, 'Error', 'Movie file is not opened.')
             return 
-        if self.fitting_param is None:
+        if self.config.calibrated_output and self.fitting_param is None:
             if not self.batch_mode:
                 dlgShowerror(self, 'Error', 'Calibration data is not loaded.')
             return
@@ -432,9 +447,35 @@ class Offline_Tracker(wx.Frame):
 
         for id in menu_items_all:
             self.menu_bar.Enable(id,False)
+        self.menu_bar.Enable(ID_ABORT_REC,True) # enable Abort menu
 
         self.run_offline_recording = True
         self.capture_time = 0.0
+    
+    def abort_offline_recording(self, event):
+        self.run_offline_recording = False
+        if self.batch_mode:
+            self.data.stop_recording()
+            self.data.close()
+            self.Destroy()
+        else:
+            self.data.stop_recording()
+            self.data.flush()
+            for id in menu_items_all:
+                self.menu_bar.Enable(id, True)
+            self.menu_bar.Enable(ID_ABORT_REC, False)
+            dlgShowinfo(self, 'Info', 'Abort.')
+
+            self.aoi_update()
+            #im = self.get_preview_image(self.orig_img, None, None)
+            #if self.area_of_interest is not None:
+            #    print('(',self.area_of_interest)
+            #    cv2.rectangle(im, (self.area_of_interest.left(),self.area_of_interest.top()),
+            #                        (self.area_of_interest.right(),self.area_of_interest.bottom()),
+            #                        (0,255,255), thickness=2)
+            #bmp = wx.Bitmap.FromBuffer(im.shape[1], im.shape[0], cv2.cvtColor(im, cv2.COLOR_BGR2RGB))
+            #self.camera_view.SetBitmap(bmp)
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0) # seek to first frame
 
     def new_image(self, event):
         if not self.queue.empty():
@@ -637,7 +678,7 @@ class Offline_Tracker(wx.Frame):
                     detect_face = True
                     
                     # only first face is used
-                    landmarks = get_face_landmarks(frame_mono, dets[0])
+                    landmarks = get_face_landmarks(frame_mono, dets[target_idx])
                     
                     # create facedata
                     face = facedata(landmarks, camera_matrix=self.camera_matrix, face_model=self.face_model,
@@ -707,8 +748,20 @@ class Offline_Tracker(wx.Frame):
                     self.data.stop_recording()
                     self.data.flush()
                     for id in menu_items_all:
-                        self.menu_bar.Enable(id,True)
+                        self.menu_bar.Enable(id, True)
+                    self.menu_bar.Enable(ID_ABORT_REC, False)
                     dlgShowinfo(self, 'Info', 'Done.')
+
+                    self.aoi_update()
+                    #im = self.get_preview_image(self.orig_img, None, None)
+                    #if self.area_of_interest is not None:
+                    #    cv2.rectangle(im, (self.area_of_interest.left(),self.area_of_interest.top()),
+                    #                        (self.area_of_interest.right(),self.area_of_interest.bottom()),
+                    #                        (0,255,255), thickness=2)
+                    #bmp = wx.Bitmap.FromBuffer(im.shape[1], im.shape[0], cv2.cvtColor(im, cv2.COLOR_BGR2RGB))
+                    #self.camera_view.SetBitmap(bmp)
+                    self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0) # seek to first frame
+
 
 if __name__ == '__main__':
 
@@ -725,6 +778,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('-c', '--cal', type=str, help='calibration file (required for batch execution)')
     arg_parser.add_argument('-o', '--output', type=str, help='output file (required for batch execution)')
     arg_parser.add_argument('--overwrite', action='store_true', help='overwrite output file (batch mode)')
+    arg_parser.add_argument('--force_calibrationless', action='store_true', help='Force calibrationless output (batch mode)')
     args = arg_parser.parse_args()
 
     homedir = Path.home()/'.rsgt'
@@ -767,11 +821,17 @@ if __name__ == '__main__':
         sys.exit()
 
     if args.batch:
-        if args.movie is None or args.cal is None or args.output is None:
-            print('Movie, calibration and output are required to run in batch mode.')
+        if args.movie is None or args.output is None:
+            print('Movie and output are required to run in batch mode.')
             sys.exit()
+        if args.cal is None:
+            if conf.calibrated_output and (not args.force_calibrationless):
+                print('Calibration file is not specified while CALIBRATED_OUTPUT is set to be True in the configuration file.  '\
+                      'Specify calibration file, edit/change configuration file, or use --force_calibrationless option to run in batch mode.')
+                sys.exit()
             
     app = wx.App(False)
-    offline_tracker = Offline_Tracker(conf, batch=args.batch, movie=args.movie, cal=args.cal, output=args.output, iris_detector = iris_detector, overwrite=args.overwrite)
+    offline_tracker = Offline_Tracker(conf, batch=args.batch, movie=args.movie, cal=args.cal, output=args.output,
+        iris_detector = iris_detector, overwrite=args.overwrite, force_calibrationless=args.force_calibrationless)
     app.MainLoop()
 
