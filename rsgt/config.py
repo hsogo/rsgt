@@ -84,6 +84,10 @@ class config(object):
         self.face_model = None
         self.eye_params = None
 
+        self.application_param_file=''
+        self.camera_param_file = ''
+        self.face_model_file = ''
+
     def load_application_param(self, filename):
         cfgp = configparser.ConfigParser()
         cfgp.optionxform = str
@@ -120,6 +124,8 @@ class config(object):
 
         if not (self.calibrated_output or self.calibrationless_output):
             raise ValueError('Either CALIBRATED_OUTPUT or CALIBRATIONLESS_OUTPUT must be True.')
+        
+        self.application_param_file = filename
         
 
     def load_camera_param(self, filename):
@@ -176,6 +182,8 @@ class config(object):
         self.screen_offset = values[2:5]
         self.screen_rot = values[5:8]
 
+        self.camera_param_file = filename
+
     def load_face_model(self, filename):
         cfgp = configparser.ConfigParser()
         cfgp.optionxform = str
@@ -210,6 +218,8 @@ class config(object):
 
         self.eye_params = np.array(values)
 
+        self.face_model_file = filename
+
 
     def save_camera_param(self, filename):
         if self.camera_matrix is None or self.dist_coeffs is None:
@@ -238,7 +248,7 @@ class config(object):
 
     def save_face_model(self, filename):
         if self.face_model is None:
-            raise RuntimeError('Camera parameters are not initialized')
+            raise RuntimeError('Face model is not initialized')
         with open('filename', 'w') as fp:
             fp.write('[Face Model]\n')
             for i, option in enumerate(face_model_params):
