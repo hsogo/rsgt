@@ -386,7 +386,6 @@ class offline_calibration_app(wx.Frame):
         self.mediapanel.SetSizer(mediasizer)
         self.slider = wx.Slider(mainpanel, wx.ID_ANY, 0, 0, 1000,style=wx.SL_HORIZONTAL|wx.SL_AUTOTICKS|wx.SL_MIN_MAX_LABELS)
         self.slider_label = wx.StaticText(mainpanel, wx.ID_ANY, 'Frame    0 / 0:00:00.000000')
-        self.buttonpanel = wx.Panel(mainpanel,wx.ID_ANY)
 
         self.camera_view.Bind(wx.EVT_LEFT_DOWN, self.camera_view_leftdown)
         self.camera_view.Bind(wx.EVT_LEFT_UP, self.camera_view_leftup)
@@ -400,6 +399,7 @@ class offline_calibration_app(wx.Frame):
         self.seek_frame = -1
 
         # Buttons
+        self.buttonpanel = wx.Panel(mainpanel,wx.ID_ANY)
         self.button_play = wx.Button(self.buttonpanel,wx.ID_ANY,"Play")
         self.button_play.Bind(wx.EVT_BUTTON,self.PlayMedia)
 
@@ -409,6 +409,7 @@ class offline_calibration_app(wx.Frame):
         self.button_step1f.Bind(wx.EVT_BUTTON,self.step_1f)
         self.cb_detect_face = wx.CheckBox(self.buttonpanel,wx.ID_ANY,"Detect face")
 
+        # unable button and slider (moive is not loaded at this point)
         self.buttonpanel.Enable(False)
         self.slider.Enable(False)
 
@@ -420,12 +421,27 @@ class offline_calibration_app(wx.Frame):
         sizer.Add(self.cb_detect_face)
         self.buttonpanel.SetSizer(sizer)
 
+        # Status panel
+        statuspanel = wx.Panel(mainpanel,wx.ID_ANY)
+        self.status_cameara_param_filename = wx.StaticText(statuspanel, wx.ID_ANY, self.config.camera_param_file)
+        self.status_face_model_filename = wx.StaticText(statuspanel, wx.ID_ANY, self.config.face_model_file)
+        self.status_movie_filename = wx.StaticText(statuspanel, wx.ID_ANY, '-')
+        statussizer = wx.FlexGridSizer(cols=2, gap=(10,0))
+        statussizer.Add(wx.StaticText(statuspanel, wx.ID_ANY, 'Camera parameter file:'))
+        statussizer.Add(self.status_cameara_param_filename)
+        statussizer.Add(wx.StaticText(statuspanel, wx.ID_ANY, 'Face model file:'))
+        statussizer.Add(self.status_face_model_filename)
+        statussizer.Add(wx.StaticText(statuspanel, wx.ID_ANY, 'Movie file:'))
+        statussizer.Add(self.status_movie_filename)
+        statuspanel.SetSizer(statussizer)
+
         # Widget layout
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(self.mediapanel,4,wx.EXPAND)
         mainsizer.Add(self.slider,0,wx.EXPAND|wx.ALL, 5)
         mainsizer.Add(self.slider_label,0,wx.EXPAND|wx.LEFT, 20)
         mainsizer.Add(self.buttonpanel,0,wx.EXPAND|wx.ALL, 10)
+        mainsizer.Add(statuspanel,0,wx.EXPAND|wx.ALL, 10)
         mainpanel.SetSizer(mainsizer)
 
         self.slider.Bind(wx.EVT_SLIDER, self.on_seek)
@@ -650,6 +666,8 @@ class offline_calibration_app(wx.Frame):
                 self.camera_view.SetBitmap(bmp)
                 self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
+            self.status_movie_filename.SetLabel(filename)
+
         else:
             self.cap = None
 
@@ -698,7 +716,8 @@ class offline_calibration_app(wx.Frame):
             im = np.zeros((self.camera_view_height, self.camera_view_width,3),dtype=np.uint8)
             bmp = wx.Bitmap.FromBuffer(im.shape[1], im.shape[0], im)
             self.camera_view.SetBitmap(bmp)
-
+        
+        self.status_cameara_param_filename.SetLabel(filename)
 
     def open_face_config(self,event):
         filename = dlgAskopenfilename(self, filetypes='Face model (*.cfg)|*.cfg')
@@ -708,6 +727,8 @@ class offline_calibration_app(wx.Frame):
         self.config.load_face_model(filename)
         self.face_model = self.config.face_model
         self.eye_params = self.config.eye_params
+
+        self.status_face_model_filename.SetLabel(filename)
 
     def open_calinfo(self, event):
         if event is not None:
