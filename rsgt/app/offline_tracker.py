@@ -139,19 +139,34 @@ class Offline_Tracker(wx.Frame):
 
         self.mediapanel = wx.Panel(self, wx.ID_ANY, size=(self.cameraview_size[1],self.cameraview_size[0]))
         self.camera_view = self.init_cameraview(self.mediapanel)
-        self.status_text = wx.StaticText(self, wx.ID_ANY, '-/- frames')
+        self.movie_frame_text = wx.StaticText(self, wx.ID_ANY, '-/- frames')
+
+        self.statuspanel = wx.Panel(self, wx.ID_ANY)
+        self.status_camera_param = wx.StaticText(self.statuspanel, wx.ID_ANY, self.config.camera_param_file)
+        self.status_face_model = wx.StaticText(self.statuspanel, wx.ID_ANY, self.config.face_model_file)
+        self.status_movie_file = wx.StaticText(self.statuspanel, wx.ID_ANY, '-')
+        self.status_cal_file = wx.StaticText(self.statuspanel, wx.ID_ANY, '-')
+        self.status_output_file = wx.StaticText(self.statuspanel, wx.ID_ANY, '-')
+        statussizer = wx.FlexGridSizer(cols=2, gap=(10,0))
+        statussizer.Add(wx.StaticText(self.statuspanel, wx.ID_ANY, 'Camera parameter file:'))
+        statussizer.Add(self.status_camera_param)
+        statussizer.Add(wx.StaticText(self.statuspanel, wx.ID_ANY, 'Face model file:'))
+        statussizer.Add(self.status_face_model)
+        statussizer.Add(wx.StaticText(self.statuspanel, wx.ID_ANY, 'Movie file:'))
+        statussizer.Add(self.status_movie_file)
+        statussizer.Add(wx.StaticText(self.statuspanel, wx.ID_ANY, 'Calibration file:'))
+        statussizer.Add(self.status_cal_file)
+        statussizer.Add(wx.StaticText(self.statuspanel, wx.ID_ANY, 'Output file:'))
+        statussizer.Add(self.status_output_file)
+        self.statuspanel.SetSizer(statussizer)
+        
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(self.mediapanel, 4, wx.EXPAND)
-        mainsizer.Add(self.status_text, 0, wx.EXPAND|wx.ALL, border=5)
+        mainsizer.Add(self.movie_frame_text, 0, wx.EXPAND|wx.ALL, border=5)
+        mainsizer.Add(self.statuspanel, 0, wx.EXPAND|wx.ALL, border=5)
         self.SetSizer(mainsizer)
         self.SetSize(self.BestSize)
         self.Bind(Offline_Tracker.EVT_NEWIMAGE, self.new_image)
-
-        #self.camera_view.Bind(wx.EVT_LEFT_DOWN, self.camera_view_leftdown)
-        #self.camera_view.Bind(wx.EVT_LEFT_UP, self.camera_view_leftup)
-        #self.camera_view.Bind(wx.EVT_LEAVE_WINDOW, self.camera_view_leave)
-        #self.camera_view.Bind(wx.EVT_LEFT_DCLICK, self.camera_view_leftdclick)
-        #self.camera_view.Bind(wx.EVT_MOTION, self.camera_view_motion)
 
         self.menu_bar = wx.MenuBar()
         self.menu_file = wx.Menu()
@@ -291,7 +306,9 @@ class Offline_Tracker(wx.Frame):
             
             self.movie_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
             self.movie_fps = self.cap.get(cv2.CAP_PROP_FPS)
-            self.status_text.SetLabel('-/{} frames'.format(self.movie_frames))
+            self.movie_frame_text.SetLabel('-/{} frames'.format(self.movie_frames))
+
+            self.status_movie_file.SetLabel(filename)
 
             #read and show the first frame
             ret, im = self.cap.read()
@@ -365,6 +382,7 @@ class Offline_Tracker(wx.Frame):
         self.Layout()
         self.SetSize(self.GetBestSize())
 
+        self.status_camera_param.SetLabel(filename)
         dlgShowinfo(self, 'Info', 'Camera parameters are updated.')
 
     def open_face_model(self,event):
@@ -376,6 +394,7 @@ class Offline_Tracker(wx.Frame):
         self.face_model = self.config.face_model
         self.eye_params = self.config.eye_params
 
+        self.status_face_model.SetLabel(filename)
         dlgShowinfo(self, 'Info', 'Face model is updated.')
 
     def open_calibration(self, event):
@@ -408,6 +427,8 @@ class Offline_Tracker(wx.Frame):
                 self.Destroy()
             else:
                 dlgShowerror(self,'Error','Cannot open {} as the calibration result'.format(filename))
+
+        self.status_cal_file.SetLabel(filename)
 
     def update_option(self,event):
         id = event.GetId()
@@ -608,6 +629,8 @@ class Offline_Tracker(wx.Frame):
             if not self.data.is_opened():
                 dlgShowerror(self, 'Error', 'Could not open datafile ({}).\nCheck filename and datafile_open_mode.'.format(filename))
         
+        self.status_output_file.SetLabel(filename)
+        
     def close_datafile(self, event):
         # this method is not called in batch mode
         if self.data is None:
@@ -635,7 +658,7 @@ class Offline_Tracker(wx.Frame):
             cv2.rectangle(canvas, (frame.shape[1]+eye_image_width,0), (frame.shape[1]+eye_image_width*2,eye_image_height), (64,64,64), thickness=1)
 
         return canvas
-
+    
     def main_loop(self):
         detect_face = False
         while self.run_main_loop:
@@ -647,7 +670,7 @@ class Offline_Tracker(wx.Frame):
             ret, frame = self.cap.read()
             if ret:
                 current_frame = self.cap.get(cv2.CAP_PROP_POS_FRAMES)
-                self.status_text.SetLabel('{}/{} frames'.format(int(current_frame-1), self.movie_frames))
+                self.movie_frame_text.SetLabel('{}/{} frames'.format(int(current_frame-1), self.movie_frames))
                 frame_mono = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
                 reye_img = None
