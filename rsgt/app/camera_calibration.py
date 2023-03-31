@@ -105,7 +105,7 @@ class set_chessboard_dlg(wx.Dialog):
         self.ctrl_pattern_size = wx.TextCtrl(self, wx.ID_ANY, "{},{}".format(*parent.pattern_size))
         sizer.Add(wx.StaticText(self, wx.ID_ANY, "Square size of Chessboard (mm; must be an integer)"))
         sizer.Add(self.ctrl_square_size)
-        sizer.Add(wx.StaticText(self, wx.ID_ANY, "Size of Chessboard (N of squares; comma-separated)"))
+        sizer.Add(wx.StaticText(self, wx.ID_ANY, "Size of Chessboard (N of corners; comma-separated)"))
         sizer.Add(self.ctrl_pattern_size)
 
         panel_buttons = wx.Panel(self, wx.ID_ANY)
@@ -529,7 +529,7 @@ class camera_calibration_app(wx.Frame):
             ps = dlg.ctrl_pattern_size.GetValue().split(',')
             self.pattern_size = (int(ps[0]), int(ps[1]))
         except:
-            wx.MessageBox('Invalid N of squares ({})'.format(dlg.ctrl_pattern_size.GetValue()),'Error')
+            wx.MessageBox('Invalid N of corners ({})'.format(dlg.ctrl_pattern_size.GetValue()),'Error')
             self.square_size = prev_square_size
             return
 
