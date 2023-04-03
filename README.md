@@ -91,7 +91,7 @@ python -m rsgt.tools.screen_layout
 
 A full-screen dialog is presented on the screen and a black cross appears on a white background.  Measure the screen width and camera position according to the diagram on the right and enter them in the edit boxes on the left.  Clicking *OK* button below the edit boxes, input values are shown in the rsgt configuration file format.  Here is an example.
 
-'''
+```
 [Screen Layout Parameters]
 WIDTH=510
 HORIZ_RES=1920
@@ -101,7 +101,7 @@ OFFSET_Z=10
 ROT_X=-10
 ROT_Y=0.0
 ROT_Z=0.0
-'''
+```
 
 Copy these lines (you can use *Copy to clipboard (Config format)* button) and paste to **[Screen Layout Parameters]** session of the camera_param.cfg.
 
